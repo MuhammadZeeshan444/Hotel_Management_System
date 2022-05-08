@@ -1,0 +1,158 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+use function Ramsey\Uuid\v1;
+use App\Models\RoomType;
+use App\Models\Roomtypeimage;
+use Illuminate\Support\Facades\Storage;
+
+class RoomtypeController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        //
+        $data = RoomType::all();
+        return view('roomtype.index', ['data'=>$data]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+        return view('roomtype.create');
+
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'=>'required',
+            'price'=>'required',
+            'detail'=>'required',
+        ]);
+        // dd($request->all());
+        $roomtype = new RoomType();
+        $roomtype->title = $request->input('title');
+        $roomtype->price = $request->input('price');
+        $roomtype->detail = $request->input('detail');
+        $roomtype->save();
+
+        // $image = $request->file('image')->getClientOriginalExtension();
+        // $imagename = time().'.'.$image;
+        // $request->file('image')->move('doctorimage',$imagename);
+        //  $doctor->image = $imagename;
+        // $doctor->save();
+
+        foreach ($request->file('images') as $img) {
+            //store multiple image
+            $imagename = time().'.'.$img;
+            $imgPath = $img->move('img',$imagename);
+            $imgData = new Roomtypeimage();
+            $imgData->room_type_id = $roomtype->id;
+            $imgData->img_src = $imgPath;
+            $imgData->img_alt = $roomtype->title;
+            $imgData->save();
+        }
+
+        return redirect('admin/roomtype/create')->with('success', 'Data has been added successfully');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        //
+        $data = RoomType::find($id);
+        return view('roomtype.show', ['data'=> $data]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+        $data = RoomType::find($id);
+        return view('roomtype.edit', ['data'=> $data]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+        $roomtype = RoomType::find($id);
+        $roomtype->title = $request->input('title');
+        $roomtype->price = $request->input('price');
+        $roomtype->detail = $request->input('detail');
+        $roomtype->save();
+
+        if($request->hasFile('images')){
+            foreach ($request->file('images') as $img) {
+                //store multiple image
+                $imagename = time().'.'.$img;
+                $imgPath = $img->move('img',$imagename);
+                $imgData = new Roomtypeimage();
+                $imgData->room_type_id = $roomtype->id;
+                $imgData->img_src = $imgPath;
+                $imgData->img_alt = $roomtype->title;
+                $imgData->save();
+            }
+        }
+
+        return redirect('admin/roomtype/'.$id. '/edit')->with('success', 'Data has been updated successfully');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+        RoomType::where('id', $id)->delete();
+        return redirect('admin/roomtype')->with('success', 'Data has been deleted successfully');
+    }
+
+    public function destroy_image($img_id)
+    {
+        //
+        $data = Roomtypeimage::where('id',$img_id)->first();
+        Storage::delete($data->img_src);
+
+        Roomtypeimage::where('id', $img_id)->delete();
+        return response()->json(['boolean'=>true]);
+    }
+}
